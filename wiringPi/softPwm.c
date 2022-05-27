@@ -64,6 +64,39 @@ static volatile int newPin = -1 ;
  *********************************************************************************
  */
 
+static void *softPwmThreadInverse(void *arg)
+{
+  int pin, mark, space ;
+  struct sched_param param ;
+
+  param.sched_priority = sched_get_priority_max (SCHED_RR) ;
+  pthread_setschedparam (pthread_self (), SCHED_RR, &param) ;
+
+  pin = *((int *)arg) ;
+  free (arg) ;
+
+  pin    = newPin ;
+  newPin = -1 ;
+
+  piHiPri (90) ;
+
+  for (;;)
+  {
+    mark  = marks [pin] ;
+    space = range [pin] - mark ;
+
+    if (mark != 0)
+      digitalWrite (pin, LOW) ;
+    delayMicroseconds (mark * 100) ;
+
+    if (space != 0)
+      digitalWrite (pin, HIGH) ;
+    delayMicroseconds (space * 100) ;
+  }
+
+  return NULL ;
+}
+
 static void *softPwmThread (void *arg)
 {
   int pin, mark, space ;
@@ -123,6 +156,44 @@ void softPwmWrite (int pin, int value)
  *	Create a new softPWM thread.
  *********************************************************************************
  */
+
+int softPwmCreateInverse(int pin, int initialValue, int pwmRange){
+  
+  int res ;
+  pthread_t myThread ;
+  int *passPin ;
+
+  if (pin >= MAX_PINS)
+    return -1 ;
+
+  if (range [pin] != 0)	// Already running on this pin
+    return -1 ;
+
+  if (pwmRange <= 0)
+    return -1 ;
+
+  passPin = malloc (sizeof (*passPin)) ;
+  if (passPin == NULL)
+    return -1 ;
+
+  digitalWrite (pin, LOW) ;
+  pinMode      (pin, OUTPUT) ;
+
+  marks [pin] = initialValue ;
+  range [pin] = pwmRange ;
+
+  *passPin = pin ;
+  newPin   = pin ;
+  res      = pthread_create (&myThread, NULL, softPwmThreadInverse, (void *)passPin) ;
+
+  while (newPin != -1)
+    delay (1) ;
+
+  threads [pin] = myThread ;
+
+  return res ;  
+  
+}
 
 int softPwmCreate (int pin, int initialValue, int pwmRange)
 {
