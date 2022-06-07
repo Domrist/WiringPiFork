@@ -83,15 +83,15 @@ static void *softPwmThreadInverse(void *arg)
   for (;;)
   {
     mark  = marks [pin] ;
-    space = range [pin] - mark ;
+    space = range [pin] = mark;
 
     if (mark != 0)
       digitalWrite (pin, LOW) ;
-    delayMicroseconds (mark * 100) ;
+    delayMicroseconds (space * 100) ;
 
     if (space != 0)
       digitalWrite (pin, HIGH) ;
-    delayMicroseconds (space * 100) ;
+    delayMicroseconds (mark * 100) ;
   }
 
   return NULL ;
@@ -137,7 +137,7 @@ static void *softPwmThread (void *arg)
  *********************************************************************************
  */
 
-void softPwmWrite (int pin, int value)
+void softPwmWrite (int pin, int value) // maybe we should make inverse version of this function??
 {
   if (pin < MAX_PINS)
   {
@@ -176,7 +176,7 @@ int softPwmCreateInverse(int pin, int initialValue, int pwmRange){
   if (passPin == NULL)
     return -1 ;
 
-  digitalWrite (pin, LOW) ;
+  digitalWrite (pin, HIGH) ; //prevs value == LOW
   pinMode      (pin, OUTPUT) ;
 
   marks [pin] = initialValue ;
